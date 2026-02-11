@@ -3,6 +3,10 @@ import json
 import time
 
 
+_LOCK_TIMEOUT = 5  # Maximum seconds to wait for a lock
+_STALE_LOCK_AGE = 30  # Seconds after which a lock file is considered stale
+
+
 class Storage:
     storage_path = ''
 
@@ -15,17 +19,6 @@ class Storage:
         if not os.path.exists(Storage.storage_path):
             os.makedirs(Storage.storage_path)
 
-        # old_storage_path = os.path.join(Path().absolute(), 'physton-prompt')
-        # if os.path.exists(old_storage_path):
-        #     # 复制就的存储文件到新的存储文件夹
-        #     for file in os.listdir(old_storage_path):
-        #         old_file_path = os.path.join(old_storage_path, file)
-        #         new_file_path = os.path.join(Storage.storage_path, file)
-        #         if not os.path.exists(new_file_path):
-        #             os.rename(old_file_path, new_file_path)
-        #     # 删除旧的存储文件夹
-        #     os.rmdir(old_storage_path)
-
         return Storage.storage_path
 
     def __get_data_filename(key):
@@ -37,7 +30,6 @@ class Storage:
     def __dispose_all_locks():
         directory = Storage.__get_storage_path()
         for filename in os.listdir(directory):
-            # 检查文件是否以指定后缀结尾
             if filename.endswith('.lock'):
                 file_path = os.path.join(directory, filename)
                 try:
@@ -58,7 +50,28 @@ class Storage:
 
     def __is_locked(key):
         file_path = Storage.__get_key_lock_filename(key)
-        return os.path.exists(file_path)
+        if not os.path.exists(file_path):
+            return False
+        # Auto-remove stale lock files older than _STALE_LOCK_AGE seconds
+        try:
+            lock_age = time.time() - os.path.getmtime(file_path)
+            if lock_age > _STALE_LOCK_AGE:
+                print(f"[sd-webui-prompt-all-in-one] Removing stale lock for key '{key}' (age: {lock_age:.1f}s)")
+                os.remove(file_path)
+                return False
+        except OSError:
+            return False
+        return True
+
+    def __wait_for_lock(key):
+        """Wait for a lock to be released, with timeout."""
+        start_time = time.time()
+        while Storage.__is_locked(key):
+            if time.time() - start_time > _LOCK_TIMEOUT:
+                print(f"[sd-webui-prompt-all-in-one] Lock timeout for key '{key}', force-unlocking")
+                Storage.__unlock(key)
+                break
+            time.sleep(0.01)
 
     def __get(key):
         filename = Storage.__get_data_filename(key)
@@ -92,8 +105,7 @@ class Storage:
             json.dump(data, f, indent=4, ensure_ascii=True)
 
     def set(key, data):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         try:
             Storage.__set(key, data)
@@ -118,8 +130,7 @@ class Storage:
 
     # 向列表中添加元素
     def list_push(key, item):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         try:
             data = Storage.__get_list(key)
@@ -132,8 +143,7 @@ class Storage:
 
     # 从列表中删除和返回最后一个元素
     def list_pop(key):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         try:
             data = Storage.__get_list(key)
@@ -147,8 +157,7 @@ class Storage:
 
     # 从列表中删除和返回第一个元素
     def list_shift(key):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         try:
             data = Storage.__get_list(key)
@@ -162,8 +171,7 @@ class Storage:
 
     # 从列表中删除指定元素
     def list_remove(key, index):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         data = Storage.__get_list(key)
         data.pop(index)
@@ -177,8 +185,7 @@ class Storage:
 
     # 清空列表中的所有元素
     def list_clear(key):
-        while Storage.__is_locked(key):
-            time.sleep(0.01)
+        Storage.__wait_for_lock(key)
         Storage.__lock(key)
         try:
             Storage.__set(key, [])

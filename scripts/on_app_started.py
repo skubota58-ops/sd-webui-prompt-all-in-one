@@ -1,3 +1,4 @@
+import asyncio
 import gradio as gr
 import os
 import sys
@@ -61,9 +62,15 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
 
     @app.get("/physton_prompt/get_version")
     async def _get_version():
+        try:
+            version = await asyncio.to_thread(get_git_commit_version)
+            latest_version = await asyncio.to_thread(get_latest_version)
+        except Exception:
+            version = get_git_commit_version()
+            latest_version = version
         return {
-            'version': get_git_commit_version(),
-            'latest_version': get_latest_version(),
+            'version': version,
+            'latest_version': latest_version,
         }
 
     @app.get("/physton_prompt/get_remote_versions")

@@ -3,6 +3,20 @@ import re
 import requests
 import subprocess
 import hashlib
+import time
+import threading
+
+
+# In-memory cache for version info
+_version_cache = {
+    'remote_versions': None,
+    'remote_versions_time': 0,
+    'latest_version': None,
+    'latest_version_time': 0,
+}
+_cache_lock = threading.Lock()
+_CACHE_TTL = 600  # 10 minutes
+_REQUEST_TIMEOUT = 5  # 5 seconds
 
 
 def get_git_commit_version():
@@ -60,6 +74,13 @@ def _handle_versions(response, filter_update_readme=False):
 
 
 def get_git_remote_versions(page=1, per_page=100, filter_update_readme=False):
+    # Check cache first
+    with _cache_lock:
+        now = time.time()
+        if (_version_cache['remote_versions'] is not None
+                and now - _version_cache['remote_versions_time'] < _CACHE_TTL):
+            return _version_cache['remote_versions']
+
     api_urls = [
         'https://api.github.com/repos/physton/sd-webui-prompt-all-in-one/commits',
         'https://gitee.com/api/v5/repos/physton/sd-webui-prompt-all-in-one/commits'
@@ -68,9 +89,12 @@ def get_git_remote_versions(page=1, per_page=100, filter_update_readme=False):
     for api_url in api_urls:
         try:
             api_url += f'?page={page}&per_page={per_page}'
-            key = hashlib.md5(api_url.encode('utf-8')).hexdigest()
-            response = requests.get(api_url)
+            response = requests.get(api_url, timeout=_REQUEST_TIMEOUT)
             versions = _handle_versions(response, filter_update_readme)
+            # Update cache
+            with _cache_lock:
+                _version_cache['remote_versions'] = versions
+                _version_cache['remote_versions_time'] = time.time()
             return versions
         except Exception as e:
             pass
@@ -79,10 +103,26 @@ def get_git_remote_versions(page=1, per_page=100, filter_update_readme=False):
 
 
 def get_latest_version():
+    # Check cache first
+    with _cache_lock:
+        now = time.time()
+        if (_version_cache['latest_version'] is not None
+                and now - _version_cache['latest_version_time'] < _CACHE_TTL):
+            return _version_cache['latest_version']
+
     current_version = get_git_commit_version()
-    # if not current_version:
-    # return current_version
-    versions = get_git_remote_versions(1, 10, False)
-    if len(versions) < 1:
-        return current_version
-    return versions[0]['version']
+    try:
+        versions = get_git_remote_versions(1, 10, False)
+        if len(versions) < 1:
+            result = current_version
+        else:
+            result = versions[0]['version']
+    except Exception:
+        result = current_version
+
+    # Update cache
+    with _cache_lock:
+        _version_cache['latest_version'] = result
+        _version_cache['latest_version_time'] = time.time()
+
+    return result
