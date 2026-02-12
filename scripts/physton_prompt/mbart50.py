@@ -11,7 +11,7 @@ loading = False
 def initialize(reload=False):
     global model, tokenizer, model_name, cache_dir, loading
     if loading:
-        while not loading:
+        while loading:
             time.sleep(0.1)
             pass
         if model is None or tokenizer is None:

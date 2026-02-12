@@ -15,8 +15,7 @@ export default {
 		return this.startWaitTick()
 	},
 
-	async execatueWaitTick()
-	{
+	async execatueWaitTick() {
 		if (this.startingTick) return
 
 		this.startingTick = true
@@ -30,11 +29,11 @@ export default {
 	},
 
 	async startWaitTick() {
-		if (!this.startingTick)
-		{
+		if (!this.startingTick) {
 			return nextTick(() => this.execatueWaitTick().catch(e => {
+				console.error('[sd-webui-prompt-all-in-one] waitTick error:', e)
 				this.startingTick = false
-				return this.startWaitTick()
+				setTimeout(() => this.startWaitTick(), 1000)
 			}))
 		}
 	}
