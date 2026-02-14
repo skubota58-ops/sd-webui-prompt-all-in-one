@@ -1,4 +1,16 @@
 import asyncio
+import datetime
+import os
+
+def log_debug(msg):
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "debug_log.txt"), "a", encoding="utf-8") as f:
+            f.write(f"{datetime.datetime.now()}: {msg}\n")
+    except Exception:
+        pass
+
+log_debug("on_app_started.py: Script loaded, starting imports")
+
 import gradio as gr
 import os
 import sys
@@ -22,6 +34,9 @@ from scripts.physton_prompt.get_lang import get_lang
 from scripts.physton_prompt.get_version import get_git_commit_version, get_git_remote_versions, get_latest_version
 from scripts.physton_prompt.mbart50 import initialize as mbart50_initialize, translate as mbart50_translate
 from scripts.physton_prompt.get_group_tags import get_group_tags
+
+log_debug("on_app_started.py: Imports completed")
+
 
 try:
     from modules.shared import cmd_opts
@@ -58,6 +73,7 @@ except Exception as e:
 
 
 def on_app_started(_: gr.Blocks, app: FastAPI):
+    log_debug("on_app_started.py: on_app_started function called")
     hi = History()
 
     @app.get("/physton_prompt/get_version")
@@ -409,7 +425,9 @@ def on_app_started(_: gr.Blocks, app: FastAPI):
 
 
 try:
+    log_debug("on_app_started.py: Registering callback")
     script_callbacks.on_app_started(on_app_started)
     print('sd-webui-prompt-all-in-one background API service started successfully.')
 except Exception as e:
+    log_debug(f"on_app_started.py: Exception: {e}")
     print(f'sd-webui-prompt-all-in-one background API service failed to start: {e}')
