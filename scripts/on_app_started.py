@@ -11,6 +11,7 @@ def log_debug(msg):
 
 log_debug("on_app_started.py: Script loaded, starting imports")
 
+
 import gradio as gr
 import os
 import sys
@@ -36,6 +37,10 @@ from scripts.physton_prompt.mbart50 import initialize as mbart50_initialize, tra
 from scripts.physton_prompt.get_group_tags import get_group_tags
 
 log_debug("on_app_started.py: Imports completed")
+
+
+log_debug("on_app_started.py: Imports completed")
+
 
 
 try:
