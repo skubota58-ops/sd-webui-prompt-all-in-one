@@ -22,3 +22,8 @@
 2026-02-14 15:30:31.128278: on_app_started.py: Imports completed
 2026-02-14 15:30:31.128818: on_app_started.py: Registering callback
 2026-02-14 15:30:50.659927: on_app_started.py: on_app_started function called
+2026-02-14 15:36:23.032438: on_app_started.py: Script loaded, starting imports
+2026-02-14 15:36:23.130594: on_app_started.py: Imports completed
+2026-02-14 15:36:23.130594: on_app_started.py: Imports completed
+2026-02-14 15:36:23.132134: on_app_started.py: Registering callback
+2026-02-14 15:36:38.869004: on_app_started.py: on_app_started function called
